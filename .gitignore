@@ -1,0 +1,10 @@
+### VS Code ###
+.vscode/
+
+### IntelliJ IDEA ###
+.idea
+atlas-virtual-machine.iml
+
+### Go ###
+bin/
+.env
