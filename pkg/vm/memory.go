@@ -1,13 +1,30 @@
 package vm
 
+const (
+	MemorySize      = 1024
+	DataSegmentSize = 512
+	CodeSegmentSize = 512
+)
+
 type Memory struct {
-	Memory [MemorySize]byte
+	data [MemorySize]byte
 }
 
-func (m *Memory) Read(address byte) byte {
-	return m.Memory[address]
+func NewMemory() *Memory {
+	return &Memory{}
 }
 
-func (m *Memory) Write(address byte, value byte) {
-	m.Memory[address] = value
+func (m *Memory) Read(address uint16) byte {
+	if address < MemorySize {
+		return m.data[address]
+	}
+	panic("Memory read out of bounds")
+}
+
+func (m *Memory) Write(address uint16, value byte) {
+	if address < MemorySize {
+		m.data[address] = value
+	} else {
+		panic("Memory write out of bounds")
+	}
 }

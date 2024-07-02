@@ -1,25 +1,34 @@
 package vm
 
+const StackSize = 256
+
 type Stack struct {
-	data []byte
+	data   [StackSize]byte
+	top    int
+	memory *Memory
 }
 
-func NewStack() *Stack {
+func NewStack(memory *Memory) *Stack {
 	return &Stack{
-		data: make([]byte, 0),
+		top:    -1,
+		memory: memory,
 	}
 }
 
 func (s *Stack) Push(value byte) {
-	s.data = append(s.data, value)
+	if s.top < StackSize-1 {
+		s.top++
+		s.memory.Write(uint16(s.top), value)
+	} else {
+		panic("Stack overflow")
+	}
 }
 
 func (s *Stack) Pop() byte {
-	if len(s.data) == 0 {
-		return 0
+	if s.top >= 0 {
+		value := s.memory.Read(uint16(s.top))
+		s.top--
+		return value
 	}
-
-	value := s.data[len(s.data)-1]
-	s.data = s.data[:len(s.data)-1]
-	return value
+	panic("Stack underflow")
 }
