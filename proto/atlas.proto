@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package atlas;
+
+option go_package = "github.com/HMZElidrissi/atlas-virtual-machine/proto";
+
+message VMState {
+  bytes memory = 1;
+  uint32 pc = 2;
+  int32 acc = 3;
+}
+
+message ConsensusMessage {
+  enum Type {
+    PRE_PREPARE = 0;
+    PREPARE = 1;
+    COMMIT = 2;
+  }
+  Type type = 1;
+  int64 view = 2;
+  VMState state = 3;
+}
+
+message Empty {}
+
+service NodeService {
+  rpc ReceiveMessage(ConsensusMessage) returns (Empty);
+}

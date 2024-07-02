@@ -7,7 +7,7 @@ const (
 )
 
 type Memory struct {
-	data [MemorySize]byte
+	Data [MemorySize]byte
 }
 
 func NewMemory() *Memory {
@@ -16,14 +16,14 @@ func NewMemory() *Memory {
 
 func (m *Memory) Read(address uint16) byte {
 	if address < MemorySize {
-		return m.data[address]
+		return m.Data[address]
 	}
 	panic("Memory read out of bounds")
 }
 
 func (m *Memory) Write(address uint16, value byte) {
 	if address < MemorySize {
-		m.data[address] = value
+		m.Data[address] = value
 	} else {
 		panic("Memory write out of bounds")
 	}

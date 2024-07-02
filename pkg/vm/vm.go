@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	pb "github.com/HMZElidrissi/atlas-virtual-machine/proto"
 	"io"
 )
 
@@ -83,4 +84,34 @@ func (vm *VM) executeInstruction(instruction Instruction) {
 	default:
 		panic(fmt.Sprintf("Unknown opcode: %d", instruction.Opcode))
 	}
+}
+
+func (vm *VM) UpdateState(state *pb.VMState) {
+	// Copy the state memory into VM memory
+	copy(vm.Memory.Data[:], state.Memory)
+	vm.Registers.PC = uint8(state.Pc)
+	vm.Registers.ACC = int8(state.Acc)
+}
+
+func (vm *VM) LoadProgram(program []byte) error {
+	// Check if the program fits in the code segment
+	if len(program) > CodeSegmentSize {
+		return fmt.Errorf("program size (%d bytes) exceeds code segment size (%d bytes)", len(program), CodeSegmentSize)
+	}
+
+	// Clear the existing code segment
+	for i := DataSegmentSize; i < MemorySize; i++ {
+		vm.Memory.Data[i] = 0
+	}
+
+	// Load the program into the code segment
+	copy(vm.Memory.Data[DataSegmentSize:], program)
+
+	// Reset the Program Counter to the start of the code segment
+	vm.Registers.PC = uint8(DataSegmentSize % 256)
+
+	// Reset the Accumulator
+	vm.Registers.ACC = 0
+
+	return nil
 }
