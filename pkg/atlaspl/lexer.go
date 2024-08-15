@@ -19,12 +19,11 @@ const (
 	ELSE
 	RETURN
 	SEMICOLON
-	EQUAL
+	COLON
 	LPAREN
 	RPAREN
 	LBRACE
 	RBRACE
-	COLON
 	PLUS
 	MINUS
 	ASTERISK
@@ -32,13 +31,60 @@ const (
 	AND
 	OR
 	NOT
+	BANG
+	EQUAL
 	EQ
 	NEQ
 	LT
 	GT
 	LTE
 	GTE
+	TRUE
+	FALSE
+	COMMENT
 )
+
+var tokenNames = [...]string{
+	EOF:       "EOF",
+	ILLEGAL:   "ILLEGAL",
+	IDENT:     "IDENT",
+	INT:       "INT",
+	BOOL:      "BOOL",
+	VAR:       "VAR",
+	IF:        "IF",
+	ELSE:      "ELSE",
+	RETURN:    "RETURN",
+	SEMICOLON: "SEMICOLON",
+	COLON:     "COLON",
+	LPAREN:    "LPAREN",
+	RPAREN:    "RPAREN",
+	LBRACE:    "LBRACE",
+	RBRACE:    "RBRACE",
+	PLUS:      "PLUS",
+	MINUS:     "MINUS",
+	ASTERISK:  "ASTERISK",
+	SLASH:     "SLASH",
+	AND:       "AND",
+	OR:        "OR",
+	BANG:      "BANG",
+	EQUAL:     "EQUAL",
+	EQ:        "EQ",
+	NEQ:       "NEQ",
+	LT:        "LT",
+	GT:        "GT",
+	LTE:       "LTE",
+	GTE:       "GTE",
+	TRUE:      "TRUE",
+	FALSE:     "FALSE",
+	COMMENT:   "COMMENT",
+}
+
+func (tt TokenType) String() string {
+	if int(tt) >= len(tokenNames) {
+		return "UNKNOWN"
+	}
+	return tokenNames[tt]
+}
 
 type Token struct {
 	Type    TokenType
@@ -112,6 +158,8 @@ func (l *Lexer) NextToken() Token {
 			return Token{Type: GTE, Literal: ">="}
 		}
 		return Token{Type: GT, Literal: ">"}
+	case ch == '@':
+		return l.readComment()
 	default:
 		return Token{Type: ILLEGAL, Literal: string(ch)}
 	}
@@ -162,8 +210,10 @@ func (l *Lexer) readIdentifier(first byte) Token {
 		return Token{Type: ELSE, Literal: literal}
 	case "return":
 		return Token{Type: RETURN, Literal: literal}
-	case "true", "false":
-		return Token{Type: BOOL, Literal: literal}
+	case "true":
+		return Token{Type: TRUE, Literal: literal}
+	case "false":
+		return Token{Type: FALSE, Literal: literal}
 	default:
 		return Token{Type: IDENT, Literal: literal}
 	}
@@ -182,6 +232,18 @@ func (l *Lexer) readNumber(first byte) Token {
 	}
 
 	return Token{Type: INT, Literal: literal}
+}
+
+func (l *Lexer) readComment() Token {
+	var comment string
+	for {
+		ch := l.readChar()
+		if ch == '\n' || ch == 0 {
+			break
+		}
+		comment += string(ch)
+	}
+	return Token{Type: COMMENT, Literal: comment}
 }
 
 func isLetter(ch byte) bool {

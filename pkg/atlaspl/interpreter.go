@@ -33,6 +33,8 @@ func (i *Interpreter) executeStatement(statement Statement) error {
 		return i.executeExpressionStatement(stmt)
 	case *IfStatement:
 		return i.executeIfStatement(stmt)
+	case *AssignmentStatement:
+		return i.executeAssignmentStatement(stmt)
 	default:
 		return fmt.Errorf("unknown statement type: %T", statement)
 	}
@@ -79,6 +81,15 @@ func (i *Interpreter) executeIfStatement(stmt *IfStatement) error {
 		return i.executeBlockStatement(stmt.Alternative)
 	}
 
+	return nil
+}
+
+func (i *Interpreter) executeAssignmentStatement(stmt *AssignmentStatement) error {
+	value, err := i.evaluateExpression(stmt.Value)
+	if err != nil {
+		return err
+	}
+	i.environment[stmt.Name.Value] = value
 	return nil
 }
 
@@ -164,9 +175,9 @@ func (i *Interpreter) evaluateInfixExpression(expr *InfixExpression) (interface{
 	case ">=":
 		return left.(int64) >= right.(int64), nil
 	case "&":
-		return left.(bool) && right.(bool), nil
+		return left.(int64) & right.(int64), nil
 	case "|":
-		return left.(bool) || right.(bool), nil
+		return left.(int64) | right.(int64), nil
 	default:
 		return nil, fmt.Errorf("unknown infix operator: %s", expr.Operator)
 	}
