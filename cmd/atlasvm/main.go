@@ -3,14 +3,54 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/HMZElidrissi/atlas-virtual-machine/pkg/atlaspl"
 	"github.com/HMZElidrissi/atlas-virtual-machine/pkg/network"
 	"github.com/HMZElidrissi/atlas-virtual-machine/pkg/vm"
 	pb "github.com/HMZElidrissi/atlas-virtual-machine/proto"
 )
 
 func main() {
+	// AtlasPL source code
+	source := `
+    @ This program checks if a number is even.
+    var number: int;
+    number = 10; @ Assign a value to number
+    if ((number & 1) == 0) { @ Check if last bit is 0 (even)
+      return (0);
+    } else {
+      return (1);
+    }
+    `
+
+	// Create lexer
+	l := atlaspl.NewLexer(strings.NewReader(source))
+
+	// Create parser
+	p := atlaspl.NewParser(l)
+
+	// Parse program
+	program := p.ParseProgram()
+
+	if len(p.Errors()) != 0 {
+		log.Println("Parser errors:")
+		for _, err := range p.Errors() {
+			log.Println(err)
+		}
+		return
+	}
+
+	// Create interpreter
+	interpreter := atlaspl.NewInterpreter()
+
+	// Run the program
+	err := interpreter.Interpret(program)
+	if err != nil {
+		log.Fatalf("Interpretation failed: %v", err)
+	}
+
 	// Initialize VMs
 	vm1 := vm.NewVM(os.Stdin, os.Stdout)
 	vm2 := vm.NewVM(os.Stdin, os.Stdout)
@@ -38,18 +78,6 @@ func main() {
 	// Initialize consensus
 	consensus1 := network.NewConsensus(node1)
 
-	// Example: Load a program into VM1
-	program := []byte{
-		0x01, 0x05, // LOAD 5
-		0x02, 0x03, // ADD 3
-		0x0D, 0x00, // OUT
-		0x0E, 0x00, // HALT
-	}
-	vm1.LoadProgram(program)
-
-	// Run the program on VM1
-	vm1.Run()
-
 	// Prepare VM state for consensus
 	vmState := &pb.VMState{
 		Memory: vm1.Memory.Data[:],
@@ -63,7 +91,7 @@ func main() {
 	}
 
 	// Start consensus on node1
-	err := consensus1.StartConsensus(consensusMsg)
+	err = consensus1.StartConsensus(consensusMsg)
 	if err != nil {
 		log.Fatalf("Failed to start consensus: %v", err)
 	}

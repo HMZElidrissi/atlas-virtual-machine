@@ -11,7 +11,8 @@ import (
 type ConsensusState int
 
 const (
-	PrePrepare ConsensusState = iota
+	INITIAL ConsensusState = iota
+	PrePrepare
 	Prepare
 	Commit
 	Finalize
@@ -29,9 +30,14 @@ type Consensus struct {
 }
 
 func NewConsensus(node *Node) *Consensus {
+	if node == nil {
+		log.Println("Error: Cannot create Consensus with nil Node")
+		return nil
+	}
+
 	return &Consensus{
 		node:           node,
-		state:          PrePrepare,
+		state:          INITIAL,
 		currentView:    0,
 		prepareCount:   make(map[string]int),
 		commitCount:    make(map[string]int),
@@ -40,14 +46,19 @@ func NewConsensus(node *Node) *Consensus {
 }
 
 func (c *Consensus) StartConsensus(msg *pb.ConsensusMessage) error {
+	if c == nil {
+		return fmt.Errorf("consensus object is nil")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.state != PrePrepare {
-		return fmt.Errorf("consensus already in progress")
+	if c.state != INITIAL {
+		return fmt.Errorf("consensus already in progress, current state: %v", c.state)
 	}
 
-	c.state = Prepare
+	log.Printf("Starting consensus for view %d", c.currentView+1)
+	c.state = PrePrepare
 	c.currentView++
 	c.prepareCount = make(map[string]int)
 	c.commitCount = make(map[string]int)
@@ -58,14 +69,20 @@ func (c *Consensus) StartConsensus(msg *pb.ConsensusMessage) error {
 	return c.node.Broadcast(msg)
 }
 
-func (c *Consensus) HandlePrePrepare(msg *pb.ConsensusMessage) error {
+func (c *Consensus) HandlePrePrepare(msg *pb.ConsensusMessage) (*pb.Empty, error) {
+	if c == nil {
+		log.Println("Error: Consensus object is nil in HandlePrePrepare")
+		return nil, fmt.Errorf("consensus object is nil")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if c.state != PrePrepare {
-		return fmt.Errorf("incorrect state for PrePrepare")
+		return nil, fmt.Errorf("incorrect state for PrePrepare: current state %v", c.state)
 	}
 
+	log.Printf("Handling PrePrepare for view %d", msg.View)
 	c.state = Prepare
 	c.currentView = msg.View
 
@@ -75,17 +92,24 @@ func (c *Consensus) HandlePrePrepare(msg *pb.ConsensusMessage) error {
 		State: msg.State,
 	}
 
-	return c.node.Broadcast(prepareMsg)
+	err := c.node.Broadcast(prepareMsg)
+	return &pb.Empty{}, err
 }
 
-func (c *Consensus) HandlePrepare(msg *pb.ConsensusMessage) error {
+func (c *Consensus) HandlePrepare(msg *pb.ConsensusMessage) (*pb.Empty, error) {
+	if c == nil {
+		log.Println("Error: Consensus object is nil in HandlePrepare")
+		return nil, fmt.Errorf("consensus object is nil")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if c.state != Prepare {
-		return fmt.Errorf("incorrect state for Prepare")
+		return nil, fmt.Errorf("incorrect state for Prepare: current state %v", c.state)
 	}
 
+	log.Printf("Handling Prepare for view %d", msg.View)
 	valueHash := fmt.Sprintf("%v", msg.State)
 	c.prepareCount[valueHash]++
 
@@ -96,20 +120,27 @@ func (c *Consensus) HandlePrepare(msg *pb.ConsensusMessage) error {
 			View:  c.currentView,
 			State: msg.State,
 		}
-		return c.node.Broadcast(commitMsg)
+		err := c.node.Broadcast(commitMsg)
+		return &pb.Empty{}, err
 	}
 
-	return nil
+	return &pb.Empty{}, nil
 }
 
-func (c *Consensus) HandleCommit(msg *pb.ConsensusMessage) error {
+func (c *Consensus) HandleCommit(msg *pb.ConsensusMessage) (*pb.Empty, error) {
+	if c == nil {
+		log.Println("Error: Consensus object is nil in HandleCommit")
+		return nil, fmt.Errorf("consensus object is nil")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if c.state != Commit {
-		return fmt.Errorf("incorrect state for Commit")
+		return nil, fmt.Errorf("incorrect state for Commit: current state %v", c.state)
 	}
 
+	log.Printf("Handling Commit for view %d", msg.View)
 	valueHash := fmt.Sprintf("%v", msg.State)
 	c.commitCount[valueHash]++
 
@@ -119,13 +150,17 @@ func (c *Consensus) HandleCommit(msg *pb.ConsensusMessage) error {
 		log.Printf("Consensus reached: %v", c.decidedValue)
 		// Update the node's VM state
 		c.node.VM.UpdateState(c.decidedValue.State)
-		return nil
 	}
 
-	return nil
+	return &pb.Empty{}, nil
 }
 
 func (c *Consensus) GetDecidedValue() *pb.ConsensusMessage {
+	if c == nil {
+		log.Println("Error: Consensus object is nil in GetDecidedValue")
+		return nil
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.decidedValue
