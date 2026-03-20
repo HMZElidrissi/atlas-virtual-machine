@@ -1,70 +1,61 @@
-# AtlasVM
+# AtlasVM — A Distributed Virtual Machine
 
-AtlasVM is a distributed virtual machine capable of executing programs written in AtlasPL, a basic programming language. This project explores the challenges and benefits of distributed computing through a simplified virtual machine framework.
+AtlasVM is an educational distributed virtual machine built from scratch in Go. It abstracts the full stack of computation: compiling a custom C-like language (AtlasPL) into bytecode, executing it via a custom VM architecture, and distributing the resulting execution state across a peer-to-peer network to reach decentralized consensus using PBFT (Practical Byzantine Fault Tolerance).
 
-## Overview
+> **Read the full step-by-step deep dive and documentation here:**  
+[AtlasVM: Building a Distributed Virtual Machine - Lessons in Compilers and Distributed Systems](https://hmzelidrissi.ma/blog/atlasvm-building-a-distributed-virtual-machine/)
 
-AtlasVM operates in a distributed system where multiple nodes collaborate to run a program and reach a consensus on the final output. The project consists of several key components:
+---
 
-1. **AtlasPL**: A simple programming language for writing programs to be executed on AtlasVM.
-2. **Lexer and Parser**: For analyzing and parsing AtlasPL code.
-3. **Interpreter**: For executing AtlasPL programs.
-4. **Virtual Machine**: The core component that executes the interpreted code.
-5. **Network Layer**: Enables communication between distributed nodes.
-6. **Consensus Mechanism**: Ensures agreement on the program's final state across all nodes.
+## Features
 
-## Getting Started
+- **AtlasPL Compiler:** A built-from-scratch Lexer, Pratt Parser, and Bytecode Compiler for a custom C-like language.
+- **Custom VM Architecture:** 
+  - 1024-byte segmented memory (Data / Code)
+  - Program Counter (PC) and Accumulator (ACC) registers
+  - A 15-instruction opcode set (built around a classic Fetch-Decode-Execute cycle)
+- **Distributed PBFT Consensus:** A full-mesh network of nodes using Protocol Buffers and gRPC that securely vote on the final execution memory footprint to guarantee fault-tolerant agreement.
 
-### Prerequisites
+## How to Run It
 
-- Go 1.16 or later
-- Protocol Buffers compiler (protoc)
-- gRPC
+**Prerequisites:** Go 1.22+
 
-### Installation
+```bash
+# Clone the repository
+git clone https://github.com/HMZElidrissi/atlas-virtual-machine
+cd atlas-virtual-machine
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/atlas-virtual-machine.git
-   cd atlas-virtual-machine
-   ```
+# Build the project
+make build
 
-2. Install dependencies:
-   ```
-   go mod tidy
-   ```
+# Run an example program (this will spin up 3 nodes to reach consensus)
+./atlasvm examples/even_odd.atlas
 
-3. Generate Protocol Buffers code:
-   ```
-   protoc --go_out=. --go-grpc_out=. proto/atlas.proto
-   ```
-
-### Running the AtlasVM
-
-1. Start the AtlasVM nodes:
-   ```
-   go run cmd/atlasvm/main.go
-   ```
-
-2. This will start three nodes by default, initialize the network, and execute a sample AtlasPL program.
-
-## Writing AtlasPL Programs
-
-AtlasPL is a simple language supporting basic operations. Here's an example program that checks if a number is even:
-
-```
-@ This program checks if a number is even.
-var number: int;
-number = 10; @ Assign a value to number
-if ((number & 1) == 0) { @ Check if last bit is 0 (even)
-  return (0);
-} else {
-  return (1);
-}
+# Run a program locally (skip the distributed network consensus)
+./atlasvm --local examples/sum.atlas
 ```
 
-For more details on this project, refer to my blog post on [AtlasVM: Building a Distributed Virtual Machine - Lessons in Compilers and Distributed Systems](https://hmzelidrissi.ma/blog/AtlasVM-Building-a-Distributed-Virtual-Machine).
+### Included Examples
 
-## Contributing
+The `examples/` directory contains ready-to-run `.atlas` programs:
 
-AtlasVM is for educational purposes and welcomes contributions from the community.
+| Command | What it does | Expected Output |
+|---|---|---|
+| `./atlasvm examples/even_odd.atlas` | Is 10 even or odd? | `0` (even) |
+| `./atlasvm examples/sum.atlas` | Calculate 3 + 4 | `7` |
+| `./atlasvm examples/absolute.atlas` | Absolute value of 5 | `5` |
+| `./atlasvm examples/max.atlas` | Calculates 4 + 4 | `8` |
+
+## Project Structure
+
+```text
+atlas-virtual-machine/
+├── cmd/atlasvm/             ← CLI Entry point
+├── examples/                ← AtlasPL example programs
+├── internal/
+│   ├── atlaspl/             ← Source code tokenization, AST parsing, and Bytecode generation
+│   ├── network/             ← gRPC Node Handlers and PBFT Consensus State Machine 
+│   └── vm/                  ← Memory limits, Registers, Stack, execution engine
+├── proto/                   ← Protobuf definitions (gRPC structures)
+└── Makefile                 ← Tooling to build, step, protocol generate, and clean
+```
