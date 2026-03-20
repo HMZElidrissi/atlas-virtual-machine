@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/HMZElidrissi/atlas-virtual-machine/pkg/vm"
+	"github.com/HMZElidrissi/atlas-virtual-machine/internal/vm"
 	pb "github.com/HMZElidrissi/atlas-virtual-machine/proto"
 	"google.golang.org/grpc"
 )
@@ -38,6 +38,11 @@ func NewNode(id, address string, vm *vm.VM) *Node {
 		Peers:   make(map[string]*NodeClient),
 		VM:      vm,
 	}
+}
+
+// SetConsensus attaches a consensus instance to the node so it can participate in consensus when receiving messages.
+func (n *Node) SetConsensus(c *Consensus) {
+	n.consensus = c
 }
 
 func (n *Node) Start() error {
@@ -78,16 +83,42 @@ func (n *Node) Broadcast(msg *pb.ConsensusMessage) error {
 }
 
 func (s *NodeService) ReceiveMessage(ctx context.Context, msg *pb.ConsensusMessage) (*pb.Empty, error) {
-	log.Printf("Received message: %v", msg)
-
-	switch msg.Type {
-	case pb.ConsensusMessage_PRE_PREPARE:
-		s.node.consensus.HandlePrePrepare(msg)
-	case pb.ConsensusMessage_PREPARE:
-		s.node.consensus.HandlePrepare(msg)
-	case pb.ConsensusMessage_COMMIT:
-		s.node.consensus.HandleCommit(msg)
+	if msg == nil {
+		log.Printf("Received nil consensus message (node=%s)", s.node.ID)
+		return &pb.Empty{}, nil
 	}
+	if msg.State != nil {
+		log.Printf(
+			"Received consensus msg: type=%v view=%d pc=%d acc=%d (node=%s)",
+			msg.Type,
+			msg.View,
+			msg.State.Pc,
+			msg.State.Acc,
+			s.node.ID,
+		)
+	} else {
+		log.Printf("Received consensus msg: type=%v view=%d (node=%s)", msg.Type, msg.View, s.node.ID)
+	}
+
+	if s.node.consensus == nil {
+		log.Printf("Node %s has no consensus instance, ignoring message", s.node.ID)
+		return &pb.Empty{}, nil
+	}
+
+	// Handle consensus asynchronously to avoid deadlock: the sender (e.g. node1) is
+	// blocked in Broadcast until this RPC returns. If we call Broadcast from here
+	// (e.g. replica broadcasting PREPARE back to node1), node1 cannot accept the
+	// new RPC until its Broadcast returns. So process in a goroutine and return immediately.
+	go func() {
+		switch msg.Type {
+		case pb.ConsensusMessage_PRE_PREPARE:
+			s.node.consensus.HandlePrePrepare(msg)
+		case pb.ConsensusMessage_PREPARE:
+			s.node.consensus.HandlePrepare(msg)
+		case pb.ConsensusMessage_COMMIT:
+			s.node.consensus.HandleCommit(msg)
+		}
+	}()
 
 	return &pb.Empty{}, nil
 }

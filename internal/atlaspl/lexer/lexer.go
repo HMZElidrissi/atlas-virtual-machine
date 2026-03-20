@@ -1,4 +1,4 @@
-package atlaspl
+package lexer
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"unicode"
 )
 
+// TokenType identifies the category of a scanned token.
 type TokenType int
 
 const (
@@ -30,7 +31,6 @@ const (
 	SLASH
 	AND
 	OR
-	NOT
 	BANG
 	EQUAL
 	EQ
@@ -86,19 +86,23 @@ func (tt TokenType) String() string {
 	return tokenNames[tt]
 }
 
+// Token is a single lexical unit produced by the Lexer.
 type Token struct {
 	Type    TokenType
 	Literal string
 }
 
+// Lexer reads AtlasPL source text and produces a stream of Tokens.
 type Lexer struct {
 	reader *bufio.Reader
 }
 
+// NewLexer returns a Lexer that reads from r.
 func NewLexer(r io.Reader) *Lexer {
 	return &Lexer{reader: bufio.NewReader(r)}
 }
 
+// NextToken returns the next Token from the input stream.
 func (l *Lexer) NextToken() Token {
 	l.skipWhitespace()
 
@@ -145,7 +149,7 @@ func (l *Lexer) NextToken() Token {
 			l.readChar()
 			return Token{Type: NEQ, Literal: "!="}
 		}
-		return Token{Type: NOT, Literal: "!"}
+		return Token{Type: BANG, Literal: "!"}
 	case ch == '<':
 		if l.peekChar() == '=' {
 			l.readChar()
@@ -190,9 +194,7 @@ func (l *Lexer) skipWhitespace() {
 }
 
 func (l *Lexer) readIdentifier(first byte) Token {
-	var literal string
-	literal += string(first)
-
+	literal := string(first)
 	for {
 		ch := l.peekChar()
 		if !isLetter(ch) && !isDigit(ch) {
@@ -200,7 +202,6 @@ func (l *Lexer) readIdentifier(first byte) Token {
 		}
 		literal += string(l.readChar())
 	}
-
 	switch literal {
 	case "var":
 		return Token{Type: VAR, Literal: literal}
@@ -220,9 +221,7 @@ func (l *Lexer) readIdentifier(first byte) Token {
 }
 
 func (l *Lexer) readNumber(first byte) Token {
-	var literal string
-	literal += string(first)
-
+	literal := string(first)
 	for {
 		ch := l.peekChar()
 		if !isDigit(ch) {
@@ -230,7 +229,6 @@ func (l *Lexer) readNumber(first byte) Token {
 		}
 		literal += string(l.readChar())
 	}
-
 	return Token{Type: INT, Literal: literal}
 }
 
@@ -246,10 +244,5 @@ func (l *Lexer) readComment() Token {
 	return Token{Type: COMMENT, Literal: comment}
 }
 
-func isLetter(ch byte) bool {
-	return unicode.IsLetter(rune(ch)) || ch == '_'
-}
-
-func isDigit(ch byte) bool {
-	return unicode.IsDigit(rune(ch))
-}
+func isLetter(ch byte) bool { return unicode.IsLetter(rune(ch)) || ch == '_' }
+func isDigit(ch byte) bool  { return unicode.IsDigit(rune(ch)) }

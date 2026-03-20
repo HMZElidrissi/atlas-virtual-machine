@@ -2,9 +2,11 @@ package vm
 
 import (
 	"fmt"
+	"log"
 	pb "github.com/HMZElidrissi/atlas-virtual-machine/proto"
 	"io"
 )
+
 
 type VM struct {
 	Memory    *Memory
@@ -27,17 +29,12 @@ func NewVM(input io.Reader, output io.Writer) *VM {
 }
 
 func (vm *VM) Run() {
-	fmt.Println("Running VM...")
-	fmt.Println("   ##   ##### #        ##    ####  ")
-	fmt.Println("  #  #    #   #       #  #  #      ")
-	fmt.Println("  #  #    #   #       #  #  #      ")
-	fmt.Println(" #    #   #   #      #    #  ####  ")
-	fmt.Println(" ######   #   #      ######      # ")
-	fmt.Println(" #    #   #   #      #    # #    # ")
-	fmt.Println(" #    #   #   ###### #    #  ####  ")
+	log.Println("Running VM...")
 	vm.running = true
 	for vm.running {
-		instruction := DecodeInstruction(vm.Memory.Read(uint16(vm.Registers.PC)))
+		// PC is a relative offset within the code segment.
+		// Add DataSegmentSize to get the absolute memory address.
+		instruction := DecodeInstruction(vm.Memory.Read(DataSegmentSize + uint16(vm.Registers.PC)))
 		vm.Registers.PC++
 		vm.executeInstruction(instruction)
 	}
@@ -93,8 +90,9 @@ func (vm *VM) UpdateState(state *pb.VMState) {
 	vm.Registers.ACC = int8(state.Acc)
 }
 
+// LoadProgram copies bytecode into the code segment and resets the CPU state.
+// PC is stored as a zero-based offset within the code segment (0 = address 512).
 func (vm *VM) LoadProgram(program []byte) error {
-	// Check if the program fits in the code segment
 	if len(program) > CodeSegmentSize {
 		return fmt.Errorf("program size (%d bytes) exceeds code segment size (%d bytes)", len(program), CodeSegmentSize)
 	}
@@ -107,11 +105,22 @@ func (vm *VM) LoadProgram(program []byte) error {
 	// Load the program into the code segment
 	copy(vm.Memory.Data[DataSegmentSize:], program)
 
-	// Reset the Program Counter to the start of the code segment
-	vm.Registers.PC = uint8(DataSegmentSize % 256)
-
-	// Reset the Accumulator
+	// PC = 0 means the first instruction at absolute address DataSegmentSize.
+	vm.Registers.PC = 0
 	vm.Registers.ACC = 0
 
 	return nil
+}
+
+// LoadData pre-populates data-segment addresses with initial values.
+// Used by the compiler to seed constant pools and pre-initialized variables.
+func (vm *VM) LoadData(data map[uint8]byte) {
+	for addr, val := range data {
+		vm.Memory.Data[addr] = val
+	}
+}
+
+// Running reports whether the VM is currently executing.
+func (vm *VM) Running() bool {
+	return vm.running
 }
