@@ -1,0 +1,12 @@
+@ sum.atlas — adds two numbers.
+@ Output: 7  (3 + 4)
+
+var a: int;
+var b: int;
+var result: int;
+
+a = 3;
+b = 4;
+result = a + b;
+
+return (result);

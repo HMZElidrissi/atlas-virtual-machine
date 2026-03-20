@@ -1,0 +1,18 @@
+@ absolute.atlas
+@ Returns the absolute value of a (possibly negative) number.
+@ Change 'value' to test with different inputs.
+@ Output: 5
+
+var value: int;
+var neg_one: int;
+
+value = 5;     @ try changing this to a negative number like -3
+neg_one = 0;   @ used as the "zero" reference for comparison
+
+if ((value & 127) == value) {
+  @ value is positive (sign bit is 0 in 7-bit range)
+  return (value);
+} else {
+  @ value is negative — negate it: result = 0 - value
+  return (neg_one - value);
+}

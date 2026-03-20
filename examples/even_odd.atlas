@@ -1,0 +1,13 @@
+@ even_odd.atlas
+@ Checks whether a number is even or odd.
+@ Output: 0 = even, 1 = odd
+
+var number: int;
+
+number = 10;
+
+if ((number & 1) == 0) {
+  return (0);
+} else {
+  return (1);
+}

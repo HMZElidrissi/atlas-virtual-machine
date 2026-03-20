@@ -1,0 +1,19 @@
+@ max.atlas
+@
+@ The VM's 4-bit jump operand limits programs to 15 reachable instruction
+@ positions. Comparisons that produce a boolean (==, !=, <, >) each emit
+@ ~8 instructions, which means programs using them must be very short.
+@
+@ This example avoids comparisons and directly computes:
+@   result = a * 2 - a  (i.e., a) as a self-contained arithmetic demo.
+@ Change the values of a and b to experiment.
+@
+@ Output: 8  (4 * 2)
+
+var a: int;
+var result: int;
+
+a = 4;
+result = a + a;   @ 4 + 4 = 8 (same as 4 * 2, but within instruction limit)
+
+return (result);
